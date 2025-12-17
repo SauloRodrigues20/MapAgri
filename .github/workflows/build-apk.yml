@@ -25,7 +25,9 @@ jobs:
 
       - name: 📦 Install dependencies
         working-directory: MapAgriApp
-        run: npm install
+        run: |
+          npm install
+          npm install -g @expo/cli eas-cli
 
       - name: 📱 Create app.json
         working-directory: MapAgriApp
@@ -95,9 +97,16 @@ jobs:
           cp assets/icon.png assets/adaptive-icon.png
           cp assets/icon.png assets/favicon.png
 
-      - name: ⚙️ Configure EAS
+      - name: ⚙️ Initialize Project
         working-directory: MapAgriApp
         run: |
+          # Inicializar projeto Expo se necessário
+          if [ ! -f "eas.json" ]; then
+            echo "Initializing EAS project..."
+            eas build:configure --platform android --non-interactive || true
+          fi
+          
+          # Garantir que eas.json existe
           cat > eas.json << 'EOF'
           {
             "cli": {
@@ -106,12 +115,6 @@ jobs:
             "build": {
               "production": {
                 "android": {
-                  "buildType": "apk",
-                  "gradleCommand": ":app:assembleRelease"
-                }
-              },
-              "preview": {
-                "android": {
                   "buildType": "apk"
                 }
               }
@@ -119,43 +122,67 @@ jobs:
           }
           EOF
 
-      - name: 🏗️ Build APK
+      - name: 🏗️ Build APK com EAS
         working-directory: MapAgriApp
         run: |
-          echo "Starting EAS build..."
-          eas build --platform android --profile production --non-interactive
-
-      - name: 📥 Download APK
-        working-directory: MapAgriApp
-        run: |
-          echo "Getting latest build info..."
-          BUILD_INFO=$(eas build:list --platform=android --status=finished --limit=1 --json)
-          echo "Build info: $BUILD_INFO"
+          echo "🚀 Starting EAS build..."
           
-          BUILD_URL=$(echo "$BUILD_INFO" | jq -r '.[0].artifacts.buildUrl // empty')
+          # Start build and capture output
+          BUILD_OUTPUT=$(eas build --platform android --profile production --non-interactive --wait 2>&1)
+          echo "$BUILD_OUTPUT"
           
-          if [ -n "$BUILD_URL" ] && [ "$BUILD_URL" != "null" ]; then
-            echo "Downloading APK from: $BUILD_URL"
-            curl -L "$BUILD_URL" -o MapAgri-v1.0.0-release.apk
-            ls -la *.apk || echo "No APK files found"
+          # Try to extract APK URL from output
+          APK_URL=$(echo "$BUILD_OUTPUT" | grep -o 'https://expo\.dev/artifacts/[^[:space:]]*\.apk' | head -1)
+          
+          if [ -n "$APK_URL" ]; then
+            echo "📥 Downloading APK from: $APK_URL"
+            curl -L "$APK_URL" -o MapAgri-v${GITHUB_REF_NAME#v}-release.apk
+            
+            # Verify APK was downloaded
+            if [ -f "MapAgri-v${GITHUB_REF_NAME#v}-release.apk" ]; then
+              echo "✅ APK downloaded successfully"
+              ls -la *.apk
+            else
+              echo "❌ Failed to download APK"
+              exit 1
+            fi
           else
-            echo "No APK URL found in build artifacts"
-            echo "Available builds:"
-            eas build:list --platform=android --limit=5
-            exit 1
+            echo "❌ Could not extract APK URL from build output"
+            echo "Trying alternative method..."
+            
+            # Fallback: get latest build
+            eas build:list --platform android --limit 1 --json > build_info.json
+            cat build_info.json
+            
+            BUILD_URL=$(jq -r '.[0].artifacts.buildUrl // empty' build_info.json 2>/dev/null || echo "")
+            
+            if [ -n "$BUILD_URL" ] && [ "$BUILD_URL" != "null" ]; then
+              echo "📥 Downloading APK from build list: $BUILD_URL"
+              curl -L "$BUILD_URL" -o MapAgri-v${GITHUB_REF_NAME#v}-release.apk
+            else
+              echo "❌ No APK URL found"
+              exit 1
+            fi
           fi
 
       - name: ✅ Verify APK
         working-directory: MapAgriApp
         run: |
-          if [ -f "MapAgri-v1.0.0-release.apk" ]; then
-            APK_SIZE=$(du -h MapAgri-v1.0.0-release.apk | cut -f1)
+          APK_FILE="MapAgri-v${GITHUB_REF_NAME#v}-release.apk"
+          
+          if [ -f "$APK_FILE" ]; then
+            APK_SIZE=$(du -h "$APK_FILE" | cut -f1)
             echo "✅ APK created successfully: $APK_SIZE"
             
             # Verificar se é um APK válido
-            file MapAgri-v1.0.0-release.apk
+            file "$APK_FILE"
+            
+            # Mover para local padrão também
+            cp "$APK_FILE" "MapAgri-release.apk"
           else
-            echo "❌ APK not found!"
+            echo "❌ APK not found: $APK_FILE"
+            echo "Files in directory:"
+            ls -la
             exit 1
           fi
 
@@ -164,7 +191,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            MapAgriApp/MapAgri-v1.0.0-release.apk
+            MapAgriApp/MapAgri-v${{ github.ref_name }}-release.apk
+            MapAgriApp/MapAgri-release.apk
           name: 🌾 MapAgri ${{ github.ref_name }}
           body: |
             # 📱 MapAgri ${{ github.ref_name }} - APK Tradicional
@@ -172,7 +200,7 @@ jobs:
             ## 🎉 APK Pronto para Instalar!
             
             ### 📥 Download:
-            - **MapAgri-v1.0.0-release.apk** - APK tradicional para Android
+            - **MapAgri-v${{ github.ref_name }}-release.apk** - APK tradicional para Android
             
             ### 📱 Como Instalar:
             1. **Baixar** o APK no celular Android
@@ -206,5 +234,5 @@ jobs:
           echo "## 🎉 APK Build Completed!" >> $GITHUB_STEP_SUMMARY
           echo "- **Platform**: Android APK" >> $GITHUB_STEP_SUMMARY  
           echo "- **Version**: 1.0.0" >> $GITHUB_STEP_SUMMARY
-          echo "- **Size**: $(du -h MapAgriApp/MapAgri-v1.0.0-release.apk 2>/dev/null | cut -f1 || echo 'Unknown')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Size**: $(du -h MapAgriApp/MapAgri-v*.apk 2>/dev/null | cut -f1 | head -1 || echo 'Unknown')" >> $GITHUB_STEP_SUMMARY
           echo "- **Download**: [Release Page](https://github.com/${{ github.repository }}/releases/latest)" >> $GITHUB_STEP_SUMMARY
