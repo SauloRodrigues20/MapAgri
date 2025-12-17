@@ -16,8 +16,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: npm
-          cache-dependency-path: MapAgriApp/package-lock.json
 
       - name: 🛠️ Setup EAS
         uses: expo/expo-github-action@v8
@@ -27,7 +25,7 @@ jobs:
 
       - name: 📦 Install dependencies
         working-directory: MapAgriApp
-        run: npm ci
+        run: npm install
 
       - name: 📱 Create app.json
         working-directory: MapAgriApp
@@ -89,10 +87,8 @@ jobs:
         run: |
           mkdir -p assets
           
-          # Criar ícone 1024x1024 em base64 (ícone verde simples)
-          cat > assets/icon.png << 'EOF'
-          data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==
-          EOF
+          # Criar ícone PNG simples 1024x1024 verde
+          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" | base64 -d > assets/icon.png
           
           # Copiar para outros assets
           cp assets/icon.png assets/splash.png
@@ -126,30 +122,26 @@ jobs:
       - name: 🏗️ Build APK
         working-directory: MapAgriApp
         run: |
-          eas build --platform android --profile production --non-interactive --no-wait
-          
-          # Aguardar build completar (timeout 30min)
-          for i in {1..180}; do
-            if eas build:list --status=finished --limit=1 | grep -q "FINISHED"; then
-              echo "Build completed!"
-              break
-            fi
-            echo "Waiting for build... ($i/180)"
-            sleep 10
-          done
+          echo "Starting EAS build..."
+          eas build --platform android --profile production --non-interactive
 
       - name: 📥 Download APK
         working-directory: MapAgriApp
         run: |
-          # Buscar URL do APK mais recente
-          BUILD_URL=$(eas build:list --status=finished --limit=1 --json | jq -r '.[0].artifacts.buildUrl')
+          echo "Getting latest build info..."
+          BUILD_INFO=$(eas build:list --platform=android --status=finished --limit=1 --json)
+          echo "Build info: $BUILD_INFO"
           
-          if [ "$BUILD_URL" != "null" ]; then
+          BUILD_URL=$(echo "$BUILD_INFO" | jq -r '.[0].artifacts.buildUrl // empty')
+          
+          if [ -n "$BUILD_URL" ] && [ "$BUILD_URL" != "null" ]; then
             echo "Downloading APK from: $BUILD_URL"
             curl -L "$BUILD_URL" -o MapAgri-v1.0.0-release.apk
-            ls -la *.apk
+            ls -la *.apk || echo "No APK files found"
           else
-            echo "No APK URL found"
+            echo "No APK URL found in build artifacts"
+            echo "Available builds:"
+            eas build:list --platform=android --limit=5
             exit 1
           fi
 
