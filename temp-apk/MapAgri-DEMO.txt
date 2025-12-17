@@ -1,0 +1,25 @@
+🚨 ESTE NÃO É UM APK REAL!
+
+Para APK real que funciona no celular:
+
+OPÇÃO 1 - Expo Go (RECOMENDADO):
+1. Baixar "Expo Go" na Play Store
+2. No computador: 
+   git clone https://github.com/SauloRodrigues20/MapAgri.git
+   cd MapAgri/MapAgriApp
+   npm install -g @expo/cli
+   npx expo start --tunnel
+3. Escanear QR code no celular
+
+OPÇÃO 2 - APK via EAS Build:
+1. npm install -g eas-cli
+2. eas login (conta grátis)
+3. eas build --platform android
+4. Aguardar 5-10min, APK será gerado na nuvem
+
+OPÇÃO 3 - Testar no Navegador:
+1. git clone https://github.com/SauloRodrigues20/MapAgri.git
+2. cd MapAgri/MapAgriApp
+3. node scripts/web-simulator.js
+
+🌾 MapAgri funcionará 100% com Expo Go!

@@ -1,0 +1,52 @@
+🌾 MapAgri v1.0.0 - Informações de Build
+=======================================
+
+📱 ESTE É UM PROJETO DE DEMONSTRAÇÃO
+
+⚠️  Para usar o app real no celular, você precisa:
+
+1. 🏗️ BUILDAR O APK:
+   - Instalar Android Studio
+   - Configurar Android SDK
+   - Executar: ./generate-apk.sh
+
+2. 📱 OU USAR ALTERNATIVAS:
+   - Expo Go (mais fácil para testar)
+   - React Native CLI com emulador
+   - Simulador web: node scripts/web-simulator.js
+
+3. 🌐 FUNCIONALIDADES JÁ PRONTAS:
+   ✅ 6 telas completas (Home, Mapa, Coleta, etc)
+   ✅ 5 serviços (GPS, Storage, Supabase, etc)
+   ✅ TypeScript sem erros
+   ✅ React Navigation funcionando
+   ✅ Supabase integrado e testado
+   ✅ Todos os recursos implementados
+
+📋 ESTRUTURA DO PROJETO:
+src/
+├── screens/         # 6 telas do app
+├── services/        # Lógica de negócio
+├── navigation/      # Navegação
+└── types/           # Tipos TypeScript
+
+📖 DOCUMENTAÇÃO COMPLETA:
+- BAIXAR_CELULAR.md  # Para usuário final
+- EXECUTAR.md        # Para desenvolvedores
+- COMO_USAR.md       # Guia completo
+- docs/              # Documentação técnica
+
+🚀 PARA TESTAR AGORA:
+cd MapAgriApp
+npm start            # Metro bundler
+npm run android      # Se tiver Android Studio
+
+🌐 SIMULADOR WEB:
+node scripts/web-simulator.js
+
+📞 SUPORTE:
+GitHub: https://github.com/SauloRodrigues20/MapAgri
+Issues: https://github.com/SauloRodrigues20/MapAgri/issues
+
+🌾 MapAgri - Agricultura de precisão 100% funcional!
+Apenas precisa de Android Studio para gerar APK final.

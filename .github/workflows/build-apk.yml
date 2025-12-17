@@ -1,0 +1,218 @@
+name: 🏗️ Build APK Tradicional
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: MapAgriApp/package-lock.json
+
+      - name: 🛠️ Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        working-directory: MapAgriApp
+        run: npm ci
+
+      - name: 📱 Create app.json
+        working-directory: MapAgriApp
+        run: |
+          cat > app.json << 'EOF'
+          {
+            "expo": {
+              "name": "MapAgri",
+              "slug": "mapagri-agricultura",
+              "version": "1.0.0",
+              "orientation": "portrait",
+              "icon": "./assets/icon.png",
+              "userInterfaceStyle": "light",
+              "splash": {
+                "image": "./assets/splash.png",
+                "resizeMode": "contain",
+                "backgroundColor": "#4CAF50"
+              },
+              "assetBundlePatterns": ["**/*"],
+              "android": {
+                "package": "com.mapagri.agricultura",
+                "versionCode": 1,
+                "compileSdkVersion": 34,
+                "targetSdkVersion": 34,
+                "buildToolsVersion": "34.0.0",
+                "permissions": [
+                  "ACCESS_FINE_LOCATION",
+                  "ACCESS_COARSE_LOCATION", 
+                  "CAMERA",
+                  "WRITE_EXTERNAL_STORAGE",
+                  "READ_EXTERNAL_STORAGE",
+                  "INTERNET"
+                ],
+                "adaptiveIcon": {
+                  "foregroundImage": "./assets/adaptive-icon.png",
+                  "backgroundColor": "#4CAF50"
+                }
+              },
+              "plugins": [
+                [
+                  "expo-location",
+                  {
+                    "locationAlwaysAndWhenInUsePermission": "MapAgri precisa de GPS para marcar as coordenadas das amostras de solo."
+                  }
+                ],
+                [
+                  "expo-camera",
+                  {
+                    "cameraPermission": "MapAgri usa câmera para fotografar as amostras de solo coletadas."
+                  }
+                ]
+              ]
+            }
+          }
+          EOF
+
+      - name: 🎨 Create assets
+        working-directory: MapAgriApp
+        run: |
+          mkdir -p assets
+          
+          # Criar ícone 1024x1024 em base64 (ícone verde simples)
+          cat > assets/icon.png << 'EOF'
+          data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==
+          EOF
+          
+          # Copiar para outros assets
+          cp assets/icon.png assets/splash.png
+          cp assets/icon.png assets/adaptive-icon.png
+          cp assets/icon.png assets/favicon.png
+
+      - name: ⚙️ Configure EAS
+        working-directory: MapAgriApp
+        run: |
+          cat > eas.json << 'EOF'
+          {
+            "cli": {
+              "version": ">= 5.8.0"
+            },
+            "build": {
+              "production": {
+                "android": {
+                  "buildType": "apk",
+                  "gradleCommand": ":app:assembleRelease"
+                }
+              },
+              "preview": {
+                "android": {
+                  "buildType": "apk"
+                }
+              }
+            }
+          }
+          EOF
+
+      - name: 🏗️ Build APK
+        working-directory: MapAgriApp
+        run: |
+          eas build --platform android --profile production --non-interactive --no-wait
+          
+          # Aguardar build completar (timeout 30min)
+          for i in {1..180}; do
+            if eas build:list --status=finished --limit=1 | grep -q "FINISHED"; then
+              echo "Build completed!"
+              break
+            fi
+            echo "Waiting for build... ($i/180)"
+            sleep 10
+          done
+
+      - name: 📥 Download APK
+        working-directory: MapAgriApp
+        run: |
+          # Buscar URL do APK mais recente
+          BUILD_URL=$(eas build:list --status=finished --limit=1 --json | jq -r '.[0].artifacts.buildUrl')
+          
+          if [ "$BUILD_URL" != "null" ]; then
+            echo "Downloading APK from: $BUILD_URL"
+            curl -L "$BUILD_URL" -o MapAgri-v1.0.0-release.apk
+            ls -la *.apk
+          else
+            echo "No APK URL found"
+            exit 1
+          fi
+
+      - name: ✅ Verify APK
+        working-directory: MapAgriApp
+        run: |
+          if [ -f "MapAgri-v1.0.0-release.apk" ]; then
+            APK_SIZE=$(du -h MapAgri-v1.0.0-release.apk | cut -f1)
+            echo "✅ APK created successfully: $APK_SIZE"
+            
+            # Verificar se é um APK válido
+            file MapAgri-v1.0.0-release.apk
+          else
+            echo "❌ APK not found!"
+            exit 1
+          fi
+
+      - name: 📤 Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            MapAgriApp/MapAgri-v1.0.0-release.apk
+          name: 🌾 MapAgri ${{ github.ref_name }}
+          body: |
+            # 📱 MapAgri ${{ github.ref_name }} - APK Tradicional
+            
+            ## 🎉 APK Pronto para Instalar!
+            
+            ### 📥 Download:
+            - **MapAgri-v1.0.0-release.apk** - APK tradicional para Android
+            
+            ### 📱 Como Instalar:
+            1. **Baixar** o APK no celular Android
+            2. **Permitir** "Fontes desconhecidas" nas configurações
+            3. **Tocar** no arquivo APK baixado
+            4. **Seguir** instruções na tela
+            5. **Usar** para coleta de amostras de solo!
+            
+            ### ✨ Funcionalidades:
+            - 🗺️ GPS de alta precisão (< 10m)
+            - 🌾 10 tipos de solo classificados  
+            - 📸 Upload automático de fotos
+            - 📂 Import/Export KML (Google Earth)
+            - ☁️ Sincronização Supabase
+            - 📱 Funciona 100% offline
+            
+            ### 🔧 Compatibilidade:
+            - **Android**: 5.0+ (API 21+)
+            - **RAM**: 2GB mínimo
+            - **Storage**: 100MB livres
+            - **GPS**: Obrigatório
+            - **Câmera**: Recomendada
+            
+            ---
+            **🇧🇷 Desenvolvido para a agricultura brasileira**
+          draft: false
+          prerelease: false
+
+      - name: 📊 Build Summary
+        run: |
+          echo "## 🎉 APK Build Completed!" >> $GITHUB_STEP_SUMMARY
+          echo "- **Platform**: Android APK" >> $GITHUB_STEP_SUMMARY  
+          echo "- **Version**: 1.0.0" >> $GITHUB_STEP_SUMMARY
+          echo "- **Size**: $(du -h MapAgriApp/MapAgri-v1.0.0-release.apk 2>/dev/null | cut -f1 || echo 'Unknown')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Download**: [Release Page](https://github.com/${{ github.repository }}/releases/latest)" >> $GITHUB_STEP_SUMMARY

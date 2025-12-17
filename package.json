@@ -1,0 +1,79 @@
+{
+  "name": "mapagri-installer",
+  "version": "1.0.0",
+  "description": "MapAgri - Sistema de Coleta de Amostras de Solo - Instalador Automático",
+  "main": "install.js",
+  "scripts": {
+    "install-mapagri": "bash install.sh",
+    "install-windows": "install.bat",
+    "test-install": "node scripts/test-install.js",
+    "clean-install": "rm -rf MapAgriApp/node_modules && npm run install-mapagri",
+    "docs": "echo 'Documentação disponível em: docs/'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SauloRodrigues20/MapAgri.git"
+  },
+  "keywords": [
+    "agricultura",
+    "gps",
+    "react-native",
+    "supabase",
+    "solo",
+    "georreferenciamento",
+    "precision-agriculture",
+    "mobile-app",
+    "typescript"
+  ],
+  "author": "Saulo Rodrigues",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SauloRodrigues20/MapAgri/issues"
+  },
+  "homepage": "https://github.com/SauloRodrigues20/MapAgri#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "os": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "preferGlobal": false,
+  "dependencies": {},
+  "devDependencies": {},
+  "installConfig": {
+    "supportedPlatforms": [
+      "linux",
+      "darwin", 
+      "win32"
+    ],
+    "requiredTools": [
+      "node",
+      "npm",
+      "git"
+    ],
+    "optionalTools": [
+      "android-sdk",
+      "xcode"
+    ]
+  },
+  "mapagri": {
+    "version": "1.0.0",
+    "features": [
+      "GPS de alta precisão",
+      "10 tipos de solo",
+      "Upload automático de fotos",
+      "Import/Export KML", 
+      "Supabase backend",
+      "Funciona offline"
+    ],
+    "requirements": {
+      "node": ">=18.0.0",
+      "reactNative": "0.83.0",
+      "android": "API 21+",
+      "ios": "13.0+"
+    }
+  }
+}
